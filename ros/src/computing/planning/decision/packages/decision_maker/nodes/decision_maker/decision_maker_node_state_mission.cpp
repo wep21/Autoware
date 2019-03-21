@@ -16,7 +16,7 @@ void DecisionMakerNode::entryWaitOrderState(cstring_t& state_name, int status)
   if (!isSubscriberRegistered("lane_waypoints_array"))
   {
     Subs["lane_waypoints_array"] =
-        nh_.subscribe(TPNAME_BASED_LANE_WAYPOINTS_ARRAY, 100, &DecisionMakerNode::callbackFromLaneWaypoint, this);
+        nh_.subscribe(TPNAME_BASED_LANE_WAYPOINTS_ARRAY, 1, &DecisionMakerNode::callbackFromLaneWaypoint, this);
   }
 }
 
@@ -34,6 +34,9 @@ void DecisionMakerNode::exitWaitOrderState(cstring_t& state_name, int status)
 
 void DecisionMakerNode::entryMissionCheckState(cstring_t& state_name, int status)
 {
+  intersects.clear();
+  initVectorMap();
+
   publishOperatorHelpMessage("Received mission, checking now...");
   setEventFlag("received_back_state_waypoint", false);
 
@@ -79,14 +82,24 @@ void DecisionMakerNode::entryMissionCheckState(cstring_t& state_name, int status
   if (!isSubscriberRegistered("final_waypoints"))
   {
     Subs["final_waypoints"] =
-        nh_.subscribe("final_waypoints", 100, &DecisionMakerNode::callbackFromFinalWaypoint, this);
+        nh_.subscribe("final_waypoints", 1, &DecisionMakerNode::callbackFromFinalWaypoint, this);
   }
 }
 void DecisionMakerNode::updateMissionCheckState(cstring_t& state_name, int status)
 {
   if (isEventFlagTrue("received_finalwaypoints") && current_status_.closest_waypoint != -1)
   {
-    tryNextState("mission_is_compatible");
+    if (current_status_.finalwaypoints.waypoints.size() < 5)
+      publishOperatorHelpMessage("Finalwaypoints is too short.If you wont to Engage,\nplease publish \"mission_is_compatible\" key by \"state_cmd\" topic.");
+    else
+      tryNextState("mission_is_compatible");
+  }
+  else
+  {
+    if (current_status_.closest_waypoint == -1)
+      publishOperatorHelpMessage("[ERROR]Couldn't received \"closest_waypoint\" or its value is -1.");
+    if (!isEventFlagTrue("received_finalwaypoints"))
+      publishOperatorHelpMessage("[ERROR]Couldn't received \"final_waypoints\".");
   }
 }
 
@@ -96,7 +109,7 @@ void DecisionMakerNode::entryMissionAbortedState(cstring_t& state_name, int stat
 }
 void DecisionMakerNode::updateMissionAbortedState(cstring_t& state_name, int status)
 {
-  if (!use_management_system_)
+  if (!use_fms_)
   {
     sleep(1);
     tryNextState("goto_wait_order");
@@ -111,7 +124,7 @@ void DecisionMakerNode::entryDriveReadyState(cstring_t& state_name, int status)
 
 void DecisionMakerNode::updateDriveReadyState(cstring_t& state_name, int status)
 {
-  if (!use_management_system_ && auto_engage_)
+  if (!use_fms_ && auto_engage_)
   {
     tryNextState("engage");
   }
@@ -136,7 +149,7 @@ void DecisionMakerNode::updateDrivingState(cstring_t& state_name, int status)
     tryNextState("mission_aborted");
   }
 
-  if (!use_management_system_ && auto_mission_change_ && isEventFlagTrue("received_based_lane_waypoint"))
+  if (!use_fms_ && auto_mission_change_ && isEventFlagTrue("received_based_lane_waypoint"))
   {
     tryNextState("request_mission_change");
   }
@@ -173,7 +186,7 @@ void DecisionMakerNode::updateDrivingMissionChangeState(cstring_t& state_name, i
 
 void DecisionMakerNode::updateMissionChangeSucceededState(cstring_t& state_name, int status)
 {
-  if (!use_management_system_)
+  if (!use_fms_)
   {
     sleep(1);
     tryNextState("return_to_driving");
@@ -181,7 +194,7 @@ void DecisionMakerNode::updateMissionChangeSucceededState(cstring_t& state_name,
 }
 void DecisionMakerNode::updateMissionChangeFailedState(cstring_t& state_name, int status)
 {
-  if (!use_management_system_)
+  if (!use_fms_)
   {
     sleep(1);
     tryNextState("return_to_driving");
@@ -190,11 +203,13 @@ void DecisionMakerNode::updateMissionChangeFailedState(cstring_t& state_name, in
 
 void DecisionMakerNode::entryMissionCompleteState(cstring_t& state_name, int status)
 {
+  setEventFlag("received_based_lane_waypoint", false);
   tryNextState("operation_end");
 }
 void DecisionMakerNode::updateMissionCompleteState(cstring_t& state_name, int status)
 {
-  if (!use_management_system_)
+  setEventFlag("received_based_lane_waypoint", false);
+  if (!use_fms_)
   {
     if (auto_mission_reload_)
     {
