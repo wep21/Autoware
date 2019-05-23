@@ -23,8 +23,9 @@ find_package(catkin REQUIRED COMPONENTS
         autoware_health_checker
         rostest
         rosunit
-        )
+)
 
+find_package(Eigen3 REQUIRED)
 ################################################
 ## Declare ROS messages, services and actions ##
 ################################################
@@ -79,7 +80,10 @@ target_link_libraries(pure_pursuit libwaypoint_follower ${catkin_LIBRARIES})
 add_dependencies(pure_pursuit
         ${catkin_EXPORTED_TARGETS})
 
-add_executable(wf_simulator nodes/wf_simulator/wf_simulator.cpp)
+add_executable(wf_simulator 
+        nodes/wf_simulator/wf_simulator_node.cpp
+        nodes/wf_simulator/wf_simulator_core.cpp
+        nodes/wf_simulator/vehicle_model.cpp)
 target_link_libraries(wf_simulator libwaypoint_follower ${catkin_LIBRARIES})
 
 add_executable(twist_filter nodes/twist_filter/twist_filter.cpp)
