@@ -56,7 +56,7 @@ WFSimulator::WFSimulator() : nh_(""), pnh_("~"), is_initialized_(false)
     }
 
     std::string initialize_source;
-    pnh_.param("initialize_source", initialize_source, std::string("Rviz"));
+    pnh_.param("initialize_source", initialize_source, std::string("Origin"));
     ROS_INFO_STREAM("initialize_source : " << initialize_source);
     if (initialize_source == "Rviz")
     {
@@ -69,6 +69,13 @@ WFSimulator::WFSimulator() : nh_(""), pnh_("~"), is_initialized_(false)
     else if (initialize_source == "GNSS")
     {
         sub_initialpose_ = nh_.subscribe("gnss_pose", 1, &WFSimulator::callbackInitialPoseStamped, this);
+    }
+    else if (initialize_source == "Origin")
+    {
+        geometry_msgs::Pose p;
+        p.orientation.w = 1.0; // yaw = 0
+        geometry_msgs::Twist t;
+        setInitialState(p, t); // initialize with 0 for all variables
     }
     else
     {
