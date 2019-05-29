@@ -30,15 +30,21 @@ VehicleModel::VehicleModel() : dim_x_(5), dim_u_(2)
 };
 
 void VehicleModel::updateEuler(const double &dt)
-{   
+{
     state_ += calcConstantAccelModel(state_, input_) * dt;
-    
-    printf("[wf_simulator] state_ = X: %4.4f,  Y:%4.4f,  YAW:%4.4f,  VX: %4.4f,  STEER: %4.4f,  dt = %3.3f\n", state_(0), state_(1), state_(2), state_(3), state_(4), dt);
+
+    printf("[wf_simulator Euler] state_ = X: %4.4f,  Y:%4.4f,  YAW:%4.4f,  VX: %4.4f,  STEER: %4.4f,  dt = %3.3f\n", state_(0), state_(1), state_(2), state_(3), state_(4), dt);
 }
 
 void VehicleModel::updateRungeKutta(const double &dt)
 {
-    /* write me */
+    Eigen::VectorXd k1 = calcConstantAccelModel(state_, input_);
+    Eigen::VectorXd k2 = calcConstantAccelModel(state_ + k1 * 0.5 * dt, input_);
+    Eigen::VectorXd k3 = calcConstantAccelModel(state_ + k2 * 0.5 * dt, input_);
+    Eigen::VectorXd k4 = calcConstantAccelModel(state_ + k3 * dt, input_);
+    state_ += 1.0/6 * (k1 + 2*k2 + 2*k3 + k4) * dt;
+
+    printf("[wf_simulator RungeKutta] state_ = X: %4.4f,  Y:%4.4f,  YAW:%4.4f,  VX: %4.4f,  STEER: %4.4f,  dt = %3.3f\n", state_(0), state_(1), state_(2), state_(3), state_(4), dt);
 }
 
 
@@ -87,5 +93,5 @@ Eigen::VectorXd calcInputDelayModel(const Eigen::VectorXd &state, Eigen::VectorX
     // time delay for input
     // change velocity & steering dynamics to 1d-model
     // add dead-zone for vel & steer control
-    // add static & dynamics friction for steering 
+    // add static & dynamics friction for steering
 }

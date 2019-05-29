@@ -16,7 +16,7 @@
 
 #include "wf_simulator_core.hpp"
 
-#define DEBUG_INFO(...) { ROS_INFO(__VA_ARGS__); } 
+#define DEBUG_INFO(...) { ROS_INFO(__VA_ARGS__); }
 
 WFSimulator::WFSimulator() : nh_(""), pnh_("~"), is_initialized_(false)
 {
@@ -107,7 +107,8 @@ void WFSimulator::timerCallbackSimulation(const ros::TimerEvent &e)
 
     const double dt = (ros::Time::now() - prev_update_time_).toSec();
     prev_update_time_ = ros::Time::now();
-    vehicle_model_.updateEuler(dt);
+    // vehicle_model_.updateEuler(dt);
+    vehicle_model_.updateRungeKutta(dt);
 
     current_pose_.position.x = vehicle_model_.getX();
     current_pose_.position.y = vehicle_model_.getY();
@@ -136,7 +137,7 @@ void WFSimulator::timerCallbackSimulation(const ros::TimerEvent &e)
     }
 
     publishPoseTwist(current_pose_, current_twist_);
-    
+
 }
 
 void WFSimulator::timerCallbackPublishTF(const ros::TimerEvent &e)
@@ -297,6 +298,6 @@ geometry_msgs::Quaternion WFSimulator::getQuaternionFromYaw(const double &_yaw)
 {
     tf2::Quaternion q;
     q.setRPY(0, 0, _yaw);
-    
+
     return tf2::toMsg(q);
 }
