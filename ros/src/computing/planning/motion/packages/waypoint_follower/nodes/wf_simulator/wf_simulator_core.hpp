@@ -74,6 +74,7 @@ private:
     double vel_lim_;
     double accel_rate_;
     double steer_vel_;
+    double vel_time_delay_, vel_time_constant_, steer_time_delay_, steer_time_constant_;
     double wheelbase_;
 
     enum class VehicleModelType

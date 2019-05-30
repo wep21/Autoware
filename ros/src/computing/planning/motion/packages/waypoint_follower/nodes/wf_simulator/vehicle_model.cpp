@@ -16,7 +16,9 @@
 
 #include "vehicle_model.hpp"
 
-VehicleModel::VehicleModel() : dim_x_(5), dim_u_(2), T_(1.0), L_(0.2)
+VehicleModel::VehicleModel() : dim_x_(5), dim_u_(2),
+                               velT_(1.0), velL_(0.2),
+                               steerT_(1.0), steerL_(0.2)
 {
     state_ = Eigen::VectorXd::Zero(dim_x_);
     input_ = Eigen::VectorXd::Zero(dim_u_);
@@ -30,15 +32,20 @@ VehicleModel::VehicleModel() : dim_x_(5), dim_u_(2), T_(1.0), L_(0.2)
 
 VehicleModel::~VehicleModel()
 {
-    input_queue_.clear();
+    vel_input_queue_.clear();
+    steer_input_queue_.clear();
 }
 
 void VehicleModel::updateEuler(const double &dt)
 {
-    delay_input_ = input_queue_.front();
-    input_queue_.pop_front();
-    input_queue_.push_back(input_);
-    state_ += calcInputDelayModel(state_, delay_input_) * dt;
+    delay_input_vel = vel_input_queue_.front();
+    vel_input_queue_.pop_front();
+    vel_input_queue_.push_back(input_(IDX_U::VX_DES));
+    delay_input_steer = steer_input_queue_.front();
+    steer_input_queue_.pop_front();
+    steer_input_queue_.push_back(input_(IDX_U::STEER_DES));
+
+    state_ += calcInputDelayModel(state_, delay_input_vel, delay_input_steer) * dt;
 
     // state_ += calcConstantAccelModel(state_, input_) * dt;
 
@@ -47,13 +54,17 @@ void VehicleModel::updateEuler(const double &dt)
 
 void VehicleModel::updateRungeKutta(const double &dt)
 {
-    delay_input_ = input_queue_.front();
-    input_queue_.pop_front();
-    input_queue_.push_back(input_);
-    Eigen::VectorXd k1 = calcInputDelayModel(state_, delay_input_);
-    Eigen::VectorXd k2 = calcInputDelayModel(state_ + k1 * 0.5 * dt, delay_input_);
-    Eigen::VectorXd k3 = calcInputDelayModel(state_ + k2 * 0.5 * dt, delay_input_);
-    Eigen::VectorXd k4 = calcInputDelayModel(state_ + k3 * dt, delay_input_);
+    delay_input_vel = vel_input_queue_.front();
+    vel_input_queue_.pop_front();
+    vel_input_queue_.push_back(input_(IDX_U::VX_DES));
+    delay_input_steer = steer_input_queue_.front();
+    steer_input_queue_.pop_front();
+    steer_input_queue_.push_back(input_(IDX_U::STEER_DES));
+
+    Eigen::VectorXd k1 = calcInputDelayModel(state_, delay_input_vel, delay_input_steer);
+    Eigen::VectorXd k2 = calcInputDelayModel(state_ + k1 * 0.5 * dt, delay_input_vel, delay_input_steer);
+    Eigen::VectorXd k3 = calcInputDelayModel(state_ + k2 * 0.5 * dt, delay_input_vel, delay_input_steer);
+    Eigen::VectorXd k4 = calcInputDelayModel(state_ + k3 * dt, delay_input_vel, delay_input_steer);
 
     // Eigen::VectorXd k1 = calcConstantAccelModel(state_, input_);
     // Eigen::VectorXd k2 = calcConstantAccelModel(state_ + k1 * 0.5 * dt, input_);
@@ -102,22 +113,22 @@ Eigen::VectorXd VehicleModel::calcConstantAccelModel(const Eigen::VectorXd &stat
     return d_state;
 };
 
-Eigen::VectorXd VehicleModel::calcInputDelayModel(const Eigen::VectorXd &state, Eigen::VectorXd &delay_input)
+Eigen::VectorXd VehicleModel::calcInputDelayModel(const Eigen::VectorXd &state, const double &delay_input_vel, const double &delay_input_steer)
 {
     // TODO
-    // time delay for input -> OK
-    // change velocity & steering dynamics to 1d-model -> OK
+    // time delay for input -> Done
+    // change velocity & steering dynamics to 1d-model -> Done
     // add dead-zone for vel & steer control
     // add static & dynamics friction for steering
     const double vel = state(IDX::VX);
     const double yaw = state(IDX::YAW);
     const double steer = state(IDX::STEER);
-    const double delay_vx_des = std::max(std::min(delay_input(IDX_U::VX_DES), vel_lim_), -vel_lim_);
-    const double delay_steer_des = std::max(std::min(delay_input(IDX_U::STEER_DES), steer_lim_), -steer_lim_);
+    const double delay_vx_des = std::max(std::min(delay_input_vel, vel_lim_), -vel_lim_);
+    const double delay_steer_des = std::max(std::min(delay_input_steer, steer_lim_), -steer_lim_);
     double vx_accel = 0.0;
     double steer_vel = 0.0;
-    vx_accel = - 1.0/T_ * (vel - delay_vx_des);
-    steer_vel = - 1.0/T_ * (steer - delay_steer_des);
+    vx_accel = - 1.0/velT_ * (vel - delay_vx_des);
+    steer_vel = - 1.0/steerT_ * (steer - delay_steer_des);
 
     Eigen::VectorXd d_state = Eigen::VectorXd::Zero(dim_x_);
     d_state(IDX::X) = vel * cos(yaw);

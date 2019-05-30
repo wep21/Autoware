@@ -35,8 +35,14 @@ WFSimulator::WFSimulator() : nh_(""), pnh_("~"), is_initialized_(false)
     pnh_.param("vel_lim", vel_lim_, double(10.0));
     pnh_.param("accel_rate", accel_rate_, double(1.0));
     pnh_.param("steer_vel", steer_vel_, double(0.3));
-    // pnh_.param("vel_time_delay", vel_time_delay_, double(0.5));
-    // std::cout << "delay = " << vel_time_delay_ << std::endl;
+    pnh_.param("vel_time_delay", vel_time_delay_, double(0.3));
+    pnh_.param("vel_time_constant", vel_time_constant_, double(0.1));
+    pnh_.param("steer_time_delay", steer_time_delay_, double(1.0));
+    pnh_.param("steer_time_constant", steer_time_constant_, double(0.5));
+    std::cout << "vel_time_delay: " << vel_time_delay_
+              << ", vel_time_constant: " << vel_time_constant_
+              << ", steer_time_delay: " << steer_time_delay_
+              << ", steer_time_contstant: " << steer_time_constant_ << std::endl;
     nh_.param("vehicle_info/wheel_base", wheelbase_, double(2.7));
 
     pnh_.param("simulation_frame_id", simulation_frame_id_, std::string("base_link"));
@@ -93,7 +99,10 @@ WFSimulator::WFSimulator() : nh_(""), pnh_("~"), is_initialized_(false)
     vehicle_model_.setAccelRate(accel_rate_);
     vehicle_model_.setSteerVel(steer_vel_);
     vehicle_model_.setWheelbase(wheelbase_);
-    // vehicle_model_.setVelTimeDelay(vel_time_delay_);
+    vehicle_model_.setVelTimeDelay(vel_time_delay_);
+    vehicle_model_.setVelTimeConstant(vel_time_constant_);
+    vehicle_model_.setSteerTimeDelay(steer_time_delay_);
+    vehicle_model_.setSteerTimeConstant(steer_time_constant_);
 
     prev_update_time_ = ros::Time::now();
     is_first_simulation_ = true;
@@ -229,7 +238,7 @@ void WFSimulator::setInitialState(const geometry_msgs::Pose &pose, const geometr
     {
         Eigen::VectorXd state(5);
         state << x, y, yaw, vx, steer;
-        std::cout << "initial set" << state << std::endl;
+        std::cout << "initial set: " << state << std::endl;
         vehicle_model_.setState(state);
     }
     else
