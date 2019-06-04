@@ -33,12 +33,16 @@
 #include "autoware_msgs/VehicleStatus.h"
 #include "autoware_msgs/Lane.h"
 
-#include "vehicle_model.hpp"
+#include "wf_simulator/wfsim_model_interface.hpp"
+#include "wf_simulator/wfsim_model_ideal_twist.hpp"
+#include "wf_simulator/wfsim_model_time_delay_steer.hpp"
+#include "wf_simulator/wfsim_model_constant_acceleration_twist.hpp"
 
 class WFSimulator
 {
 public:
     WFSimulator();
+    ~WFSimulator() = default;
 
 private:
     ros::NodeHandle nh_;
@@ -59,7 +63,7 @@ private:
     std::shared_ptr<autoware_msgs::Lane> current_waypoints_ptr_;
     std::shared_ptr<std_msgs::Int32> current_closest_waypoint_ptr_;
     bool is_initialized_;
-    bool is_first_simulation_;
+    bool is_prev_time_recorded_;
 
     tf::TransformListener tf_listener_;
     tf::TransformBroadcaster tf_broadcaster_;
@@ -69,21 +73,21 @@ private:
     std::string lidar_frame_id_;
     ros::Time prev_update_time_;
 
+    double loop_rate_;
     double lidar_height_;
-    double steer_lim_;
-    double vel_lim_;
-    double accel_rate_;
-    double steer_vel_;
-    double vel_time_delay_, vel_time_constant_, steer_time_delay_, steer_time_constant_;
     double wheelbase_;
 
     enum class VehicleModelType
     {
-        ANGVEL = 0,
-        STEERING = 1,
+        IDEAL_TWIST = 0,
+        IDEAL_STEER = 1,
+        DELAY_TWIST,
+        DELAY_STEER,
+        CONST_ACCEL_TWIST,
+
     } vehicle_model_type_;
 
-    VehicleModel vehicle_model_;
+    std::shared_ptr<WFSimModelInterface> vehicle_model_ptr_;
 
     void callbackVehicleCmd(const autoware_msgs::VehicleCmdConstPtr &msg);
     void callbackWaypoints(const autoware_msgs::LaneConstPtr &msg);

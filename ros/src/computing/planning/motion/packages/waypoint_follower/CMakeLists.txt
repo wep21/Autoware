@@ -83,19 +83,20 @@ add_executable(pure_pursuit
         nodes/pure_pursuit/pure_pursuit_viz.cpp
         )
 target_link_libraries(pure_pursuit libwaypoint_follower ${catkin_LIBRARIES})
-add_dependencies(pure_pursuit
-        ${catkin_EXPORTED_TARGETS})
+add_dependencies(pure_pursuit ${catkin_EXPORTED_TARGETS})
 
 add_executable(wf_simulator 
         nodes/wf_simulator/wf_simulator_node.cpp
         nodes/wf_simulator/wf_simulator_core.cpp
-        nodes/wf_simulator/vehicle_model.cpp)
+        nodes/wf_simulator/vehicle_model/wfsim_model_interface.cpp
+        nodes/wf_simulator/vehicle_model/wfsim_model_ideal_twist.cpp
+        nodes/wf_simulator/vehicle_model/wfsim_model_constant_acceleration_twist.cpp
+        nodes/wf_simulator/vehicle_model/wfsim_model_time_delay_steer.cpp)
 target_link_libraries(wf_simulator libwaypoint_follower ${catkin_LIBRARIES})
 
 add_executable(twist_filter nodes/twist_filter/twist_filter.cpp)
 target_link_libraries(twist_filter ${catkin_LIBRARIES})
-add_dependencies(twist_filter
-        ${catkin_EXPORTED_TARGETS})
+add_dependencies(twist_filter ${catkin_EXPORTED_TARGETS})
 
 add_executable(twist_gate nodes/twist_gate/twist_gate_node.cpp nodes/twist_gate/twist_gate.cpp)
 target_link_libraries(twist_gate ${catkin_LIBRARIES})
