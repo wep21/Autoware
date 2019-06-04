@@ -16,17 +16,18 @@
 
 #include "wf_simulator_core.hpp"
 
-#define DEBUG_INFO(...) { ROS_INFO(__VA_ARGS__); } 
+#define DEBUG_INFO(...) { ROS_INFO(__VA_ARGS__); }
 
 WFSimulator::WFSimulator() : nh_(""), pnh_("~"), is_initialized_(false)
 {
+    double deltaT = 0.01;
     pub_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("sim_pose", 1);
     pub_twist_ = nh_.advertise<geometry_msgs::TwistStamped>("sim_velocity", 1);
     pub_vehicle_status_ = nh_.advertise<autoware_msgs::VehicleStatus>("sim_vehicle_status", 1);
     sub_vehicle_cmd_ = nh_.subscribe("vehicle_cmd", 1, &WFSimulator::callbackVehicleCmd, this);
     sub_waypoints_ = nh_.subscribe("base_waypoints", 1, &WFSimulator::callbackWaypoints, this);
     sub_closest_waypoint_ = nh_.subscribe("closest_waypoint", 1, &WFSimulator::callbackClosestWaypoint, this);
-    timer_simulation_ = nh_.createTimer(ros::Duration(0.01), &WFSimulator::timerCallbackSimulation, this);
+    timer_simulation_ = nh_.createTimer(ros::Duration(deltaT), &WFSimulator::timerCallbackSimulation, this);
     timer_tf_ = nh_.createTimer(ros::Duration(0.1), &WFSimulator::timerCallbackPublishTF, this);
 
     pnh_.param("lidar_height", lidar_height_, double(1.0));
@@ -34,6 +35,14 @@ WFSimulator::WFSimulator() : nh_(""), pnh_("~"), is_initialized_(false)
     pnh_.param("vel_lim", vel_lim_, double(10.0));
     pnh_.param("accel_rate", accel_rate_, double(1.0));
     pnh_.param("steer_vel", steer_vel_, double(0.3));
+    pnh_.param("vel_time_delay", vel_time_delay_, double(0.3));
+    pnh_.param("vel_time_constant", vel_time_constant_, double(0.1));
+    pnh_.param("steer_time_delay", steer_time_delay_, double(1.0));
+    pnh_.param("steer_time_constant", steer_time_constant_, double(0.5));
+    std::cout << "vel_time_delay: " << vel_time_delay_
+              << ", vel_time_constant: " << vel_time_constant_
+              << ", steer_time_delay: " << steer_time_delay_
+              << ", steer_time_contstant: " << steer_time_constant_ << std::endl;
     nh_.param("vehicle_info/wheel_base", wheelbase_, double(2.7));
 
     pnh_.param("simulation_frame_id", simulation_frame_id_, std::string("base_link"));
@@ -83,11 +92,17 @@ WFSimulator::WFSimulator() : nh_(""), pnh_("~"), is_initialized_(false)
     }
 
 
+    vehicle_model_.setDeltaT(deltaT);
+    vehicle_model_.initialInputQueue();
     vehicle_model_.setSteerLim(steer_lim_);
     vehicle_model_.setVelLim(vel_lim_);
     vehicle_model_.setAccelRate(accel_rate_);
     vehicle_model_.setSteerVel(steer_vel_);
     vehicle_model_.setWheelbase(wheelbase_);
+    vehicle_model_.setVelTimeDelay(vel_time_delay_);
+    vehicle_model_.setVelTimeConstant(vel_time_constant_);
+    vehicle_model_.setSteerTimeDelay(steer_time_delay_);
+    vehicle_model_.setSteerTimeConstant(steer_time_constant_);
 
     prev_update_time_ = ros::Time::now();
     is_first_simulation_ = true;
@@ -107,7 +122,8 @@ void WFSimulator::timerCallbackSimulation(const ros::TimerEvent &e)
 
     const double dt = (ros::Time::now() - prev_update_time_).toSec();
     prev_update_time_ = ros::Time::now();
-    vehicle_model_.updateEuler(dt);
+    // vehicle_model_.updateEuler(dt);
+    vehicle_model_.updateRungeKutta(dt);
 
     current_pose_.position.x = vehicle_model_.getX();
     current_pose_.position.y = vehicle_model_.getY();
@@ -136,7 +152,7 @@ void WFSimulator::timerCallbackSimulation(const ros::TimerEvent &e)
     }
 
     publishPoseTwist(current_pose_, current_twist_);
-    
+
 }
 
 void WFSimulator::timerCallbackPublishTF(const ros::TimerEvent &e)
@@ -222,7 +238,7 @@ void WFSimulator::setInitialState(const geometry_msgs::Pose &pose, const geometr
     {
         Eigen::VectorXd state(5);
         state << x, y, yaw, vx, steer;
-        std::cout << "initial set" << state << std::endl;
+        std::cout << "initial set: " << state << std::endl;
         vehicle_model_.setState(state);
     }
     else
@@ -297,6 +313,6 @@ geometry_msgs::Quaternion WFSimulator::getQuaternionFromYaw(const double &_yaw)
 {
     tf2::Quaternion q;
     q.setRPY(0, 0, _yaw);
-    
+
     return tf2::toMsg(q);
 }
