@@ -18,15 +18,15 @@
 
 #define DEBUG_INFO(...) { ROS_INFO(__VA_ARGS__); }
 
-WFSimulator::WFSimulator() : nh_(""), pnh_("~"), is_initialized_(false)
+WFSimulator::WFSimulator() : nh_(""), pnh_("~"), is_initialized_(false), is_prev_time_recorded_(false)
 {
     /* wf_simulator parameters */
     pnh_.param("loop_rate", loop_rate_, double(50.0));
     pnh_.param("lidar_height", lidar_height_, double(1.0));
     nh_.param("vehicle_info/wheel_base", wheelbase_, double(2.7));
-    pnh_.param("simulation_frame_id", simulation_frame_id_, std::string("base_link"));
+    pnh_.param("simulation_frame_id", simulation_frame_id_, std::string("sim_base_link"));
     pnh_.param("map_frame_id", map_frame_id_, std::string("map"));
-    pnh_.param("lidar_frame_id", lidar_frame_id_, std::string("lidar"));
+    pnh_.param("lidar_frame_id", lidar_frame_id_, std::string("sim_lidar"));
 
     /* set pub sub topic name */
     std::string sim_pose_name, sim_velocity_name, sim_vehicle_status_name;
@@ -39,7 +39,7 @@ WFSimulator::WFSimulator() : nh_(""), pnh_("~"), is_initialized_(false)
     sub_vehicle_cmd_ = nh_.subscribe("vehicle_cmd", 1, &WFSimulator::callbackVehicleCmd, this);
     sub_waypoints_ = nh_.subscribe("base_waypoints", 1, &WFSimulator::callbackWaypoints, this);
     sub_closest_waypoint_ = nh_.subscribe("closest_waypoint", 1, &WFSimulator::callbackClosestWaypoint, this);
-    timer_simulation_ = nh_.createTimer(ros::Duration(loop_rate_), &WFSimulator::timerCallbackSimulation, this);
+    timer_simulation_ = nh_.createTimer(ros::Duration(1.0 / loop_rate_), &WFSimulator::timerCallbackSimulation, this);
     timer_tf_ = nh_.createTimer(ros::Duration(0.1), &WFSimulator::timerCallbackPublishTF, this);
 
     /* set vehicle model parameters */
@@ -77,7 +77,8 @@ WFSimulator::WFSimulator() : nh_(""), pnh_("~"), is_initialized_(false)
     else if (vehicle_model_type_str == "DELAY_STEER")
     {
         vehicle_model_type_ = VehicleModelType::DELAY_STEER;
-        vehicle_model_ptr_ = std::make_shared<WFSimModelTimeDelaySteer>(vel_lim, steer_lim, wheelbase_, loop_rate_, vel_time_delay,
+        const double dt = 1.0 / loop_rate_;
+        vehicle_model_ptr_ = std::make_shared<WFSimModelTimeDelaySteer>(vel_lim, steer_lim, wheelbase_, dt, vel_time_delay,
                                                                         vel_time_constant, steer_time_delay, steer_time_constant);
     }
     else if (vehicle_model_type_str == "CONST_ACCEL_TWIST")
@@ -119,7 +120,6 @@ WFSimulator::WFSimulator() : nh_(""), pnh_("~"), is_initialized_(false)
     }
 
     prev_update_time_ = ros::Time::now();
-    is_prev_time_recorded_ = false;
     current_pose_.orientation.w = 1.0;
 }
 
