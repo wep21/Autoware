@@ -614,15 +614,21 @@ subs :
          cmd  : roslaunch waypoint_follower twist_filter.launch
          param: twist_filter
        - name : wf_simulator
-         desc : wf_simulator desc sample
+         desc : waypoint follow simulator for integration test
          cmd  : roslaunch waypoint_follower wf_simulator.launch
          param: wf_simulator
          gui  :
            initialize_source :
              flags : [ nl ]
+           vehicle_model_type :
+             flags : [ nl ]
            accel_rate :
              flags : [ nl ]
            position_error :
+             flags : [ nl ]
+           angle_error :
+             flags : [ nl ]
+           use_ctrl_cmd : 
              flags : [ nl ]
 
     - name : OpenPlanner - Local planning
@@ -2194,6 +2200,17 @@ params :
       cmd_param:
         dash     : ''
         delim    : ':='
+    - name    : vehicle_model_type
+      desc    : vehicle model type for simulation dynamics 
+      label   : 'vehicle_model_type Source :'
+      kind    : menu
+      choices : ['IDEAL_TWIST','DELAY_TWIST','IDEAL_STEER', 'DELAY_STEER', 'IDEAL_FORKLIFT_RLS', 'DELAY_FORKLIFT_RLS']
+      descs   : ['ideal twist model', 'twist model with input time & response delay', 'ideal steering model', 'steering model with input time & response delay', 'ideal forklift model with steering on rear left wheel', 'forklift model with input time & response delay, and steering on rear left wheel']
+      choices_type : str
+      v       : 'IDEAL_TWIST'
+      cmd_param:
+        dash     : ''
+        delim    : ':='
     - name      : accel_rate
       desc      :
       label   : 'accel_rate(m/s^2) :'
@@ -2223,6 +2240,7 @@ params :
       cmd_param :
         dash        : ''
         delim       : ':='
+
 
   - name  : decision_maker
     topic : /config/decision_maker
