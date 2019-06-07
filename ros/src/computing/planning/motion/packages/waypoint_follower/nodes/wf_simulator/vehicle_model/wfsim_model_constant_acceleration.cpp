@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "wf_simulator/wfsim_model_constant_acceleration_twist.hpp"
+#include "wf_simulator/wfsim_model_constant_acceleration.hpp"
 
 WFSimModelConstantAccelTwist::WFSimModelConstantAccelTwist(double vel_lim, double angvel_lim, double vel_rate, double angvel_rate)
     : WFSimModelInterface(5 /* dim x */, 2 /* dim u */), vel_lim_(vel_lim), angvel_lim_(angvel_lim), vel_rate_(vel_rate), angvel_rate_(angvel_rate){};

@@ -15,7 +15,62 @@
  * limitations under the License.
  */
 
-#include "wf_simulator/wfsim_model_time_delay_steer.hpp"
+#include "wf_simulator/wfsim_model_time_delay.hpp"
+
+WFSimModelTimeDelayTwist::WFSimModelTimeDelayTwist(double vx_lim, double wz_lim, double dt, double vx_delay,
+                             double vx_time_constant, double wz_delay, double wz_time_constant)
+    : WFSimModelInterface(5 /* dim x */, 2 /* dim u */), vx_lim_(vx_lim), wz_lim_(wz_lim), vx_delay_(vx_delay),
+      vx_time_constant_(vx_time_constant), wz_delay_(wz_delay), wz_time_constant_(wz_time_constant)
+{
+    initializeInputQueue(dt);
+};
+
+double WFSimModelTimeDelayTwist::getX() { return state_(IDX::X); };
+double WFSimModelTimeDelayTwist::getY() { return state_(IDX::Y); };
+double WFSimModelTimeDelayTwist::getYaw() { return state_(IDX::YAW); };
+double WFSimModelTimeDelayTwist::getVx() { return state_(IDX::VX); };
+double WFSimModelTimeDelayTwist::getWz() { return state_(IDX::WZ); };
+double WFSimModelTimeDelayTwist::getSteer() { return 0.0; };
+
+void WFSimModelTimeDelayTwist::initializeInputQueue(const double &dt)
+{
+    size_t vx_input_queue_size = static_cast<size_t>(round(vx_delay_ / dt));
+    for (size_t i = 0; i < vx_input_queue_size; i++)
+    {
+        vx_input_queue_.push_back(0.0);
+    }
+    size_t wz_input_queue_size = static_cast<size_t>(round(wz_delay_ / dt));
+    for (size_t i = 0; i < wz_input_queue_size; i++)
+    {
+        wz_input_queue_.push_back(0.0);
+    }
+}
+
+Eigen::VectorXd WFSimModelTimeDelayTwist::calcModel(const Eigen::VectorXd &state, Eigen::VectorXd &input)
+{
+    const double delay_input_vx = vx_input_queue_.front();
+    vx_input_queue_.pop_front();
+    vx_input_queue_.push_back(input_(IDX_U::VX_DES));
+    const double delay_input_wz = wz_input_queue_.front();
+    wz_input_queue_.pop_front();
+    wz_input_queue_.push_back(input_(IDX_U::WZ_DES));
+
+    const double vx = state(IDX::VX);
+    const double wz = state(IDX::WZ);
+    const double yaw = state(IDX::YAW);
+    const double delay_vx_des = std::max(std::min(delay_input_vx, vx_lim_), -vx_lim_);
+    const double delay_wz_des = std::max(std::min(delay_input_wz, wz_lim_), -wz_lim_);
+
+    Eigen::VectorXd d_state = Eigen::VectorXd::Zero(dim_x_);
+    d_state(IDX::X) = vx * cos(yaw);
+    d_state(IDX::Y) = vx * sin(yaw);
+    d_state(IDX::YAW) = wz;
+    d_state(IDX::VX) = -(vx - delay_vx_des) / vx_time_constant_;
+    d_state(IDX::WZ) = -(wz - delay_wz_des) / wz_time_constant_;
+
+    return d_state;
+};
+
 
 WFSimModelTimeDelaySteer::WFSimModelTimeDelaySteer(double vel_lim, double steer_lim, double wheelbase, double dt, double vel_delay,
                                                    double vel_time_constant, double steer_delay, double steer_time_constant)

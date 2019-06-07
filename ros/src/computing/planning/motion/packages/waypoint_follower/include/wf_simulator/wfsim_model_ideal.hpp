@@ -48,3 +48,33 @@ private:
     double getSteer() override;
     Eigen::VectorXd calcModel(const Eigen::VectorXd &state, Eigen::VectorXd &input) override;
 };
+
+class WFSimModelIdealSteer : public WFSimModelInterface
+{
+public:
+    WFSimModelIdealSteer(double wheelbase);
+    ~WFSimModelIdealSteer() = default;
+
+private:
+    enum IDX
+    {
+        X = 0,
+        Y,
+        YAW,
+    };
+    enum IDX_U
+    {
+        VX_DES = 0,
+        STEER_DES,
+    };
+
+    double wheelbase_;
+
+    double getX() override;
+    double getY() override;
+    double getYaw() override;
+    double getVx() override;
+    double getWz() override;
+    double getSteer() override;
+    Eigen::VectorXd calcModel(const Eigen::VectorXd &state, Eigen::VectorXd &input) override;
+};

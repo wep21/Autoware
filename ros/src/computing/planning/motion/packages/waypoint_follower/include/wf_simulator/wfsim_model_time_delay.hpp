@@ -23,6 +23,52 @@
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/LU>
 
+class WFSimModelTimeDelayTwist : public WFSimModelInterface
+{
+public:
+    WFSimModelTimeDelayTwist(double vel_lim, double angvel_lim, double dt, double vx_delay,
+                             double vx_time_constant, double wz_delay, double wz_time_constant);
+    ~WFSimModelTimeDelayTwist() = default;
+
+private:
+    enum IDX
+    {
+        X = 0,
+        Y,
+        YAW,
+        VX,
+        WZ,
+    };
+    enum IDX_U
+    {
+        VX_DES = 0,
+        WZ_DES,
+    };
+
+    double dt_;
+
+    double vx_lim_;
+    double wz_lim_;
+
+    std::deque<double> vx_input_queue_;
+    std::deque<double> wz_input_queue_;
+    double vx_delay_;
+    double vx_time_constant_;
+    double wz_delay_;
+    double wz_time_constant_;
+
+    void initializeInputQueue(const double &dt);
+
+    double getX() override;
+    double getY() override;
+    double getYaw() override;
+    double getVx() override;
+    double getWz() override;
+    double getSteer() override;
+    Eigen::VectorXd calcModel(const Eigen::VectorXd &state, Eigen::VectorXd &input) override;
+};
+
+
 class WFSimModelTimeDelaySteer : public WFSimModelInterface
 {
 public:

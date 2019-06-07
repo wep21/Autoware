@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "wf_simulator/wfsim_model_ideal_twist.hpp"
+#include "wf_simulator/wfsim_model_ideal.hpp"
 
 WFSimModelIdealTwist::WFSimModelIdealTwist() : WFSimModelInterface(3 /* dim x */, 2 /* dim u */){};
 
@@ -36,6 +36,30 @@ Eigen::VectorXd WFSimModelIdealTwist::calcModel(const Eigen::VectorXd &state, Ei
     d_state(IDX::X) = vx * cos(yaw);
     d_state(IDX::Y) = vx * sin(yaw);
     d_state(IDX::YAW) = wz;
+
+    return d_state;
+};
+
+WFSimModelIdealSteer::WFSimModelIdealSteer(double wheelbase)
+    : WFSimModelInterface(3 /* dim x */, 2 /* dim u */), wheelbase_(wheelbase) {};
+
+double WFSimModelIdealSteer::getX() { return state_(IDX::X); };
+double WFSimModelIdealSteer::getY() { return state_(IDX::Y); };
+double WFSimModelIdealSteer::getYaw() { return state_(IDX::YAW); };
+double WFSimModelIdealSteer::getVx() { return input_(IDX_U::VX_DES); };
+double WFSimModelIdealSteer::getWz() { return input_(IDX_U::VX_DES) * std::tan(input_(IDX_U::STEER_DES)) / wheelbase_; };
+double WFSimModelIdealSteer::getSteer() { return input_(IDX_U::STEER_DES); };
+
+Eigen::VectorXd WFSimModelIdealSteer::calcModel(const Eigen::VectorXd &state, Eigen::VectorXd &input)
+{
+    const double yaw = state(IDX::YAW);
+    const double vx = input(IDX_U::VX_DES);
+    const double steer = input(IDX_U::STEER_DES);
+
+    Eigen::VectorXd d_state = Eigen::VectorXd::Zero(dim_x_);
+    d_state(IDX::X) = vx * cos(yaw);
+    d_state(IDX::Y) = vx * sin(yaw);
+    d_state(IDX::YAW) = vx * std::tan(steer) / wheelbase_;
 
     return d_state;
 };

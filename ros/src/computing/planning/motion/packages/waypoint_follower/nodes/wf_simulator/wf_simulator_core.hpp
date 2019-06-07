@@ -34,9 +34,9 @@
 #include "autoware_msgs/Lane.h"
 
 #include "wf_simulator/wfsim_model_interface.hpp"
-#include "wf_simulator/wfsim_model_ideal_twist.hpp"
-#include "wf_simulator/wfsim_model_time_delay_steer.hpp"
-#include "wf_simulator/wfsim_model_constant_acceleration_twist.hpp"
+#include "wf_simulator/wfsim_model_ideal.hpp"
+#include "wf_simulator/wfsim_model_time_delay.hpp"
+#include "wf_simulator/wfsim_model_constant_acceleration.hpp"
 
 class WFSimulator
 {

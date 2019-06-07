@@ -16,7 +16,10 @@
 
 #include "wf_simulator_core.hpp"
 
-#define DEBUG_INFO(...) { ROS_INFO(__VA_ARGS__); }
+#define DEBUG_INFO(...)        \
+    {                          \
+        ROS_INFO(__VA_ARGS__); \
+    }
 
 WFSimulator::WFSimulator() : nh_(""), pnh_("~"), is_initialized_(false), is_prev_time_recorded_(false)
 {
@@ -44,7 +47,7 @@ WFSimulator::WFSimulator() : nh_(""), pnh_("~"), is_initialized_(false), is_prev
 
     /* set vehicle model parameters */
     double angvel_lim, vel_lim, steer_lim, accel_rate, angvel_rate, steer_vel, vel_time_delay,
-        vel_time_constant, steer_time_delay, steer_time_constant;
+        vel_time_constant, steer_time_delay, steer_time_constant, angvel_time_delay, angvel_time_constant;
     pnh_.param("angvel_lim", angvel_lim, double(3.0));
     pnh_.param("vel_lim", vel_lim, double(10.0));
     pnh_.param("steer_lim", steer_lim, double(3.14 / 3.0));
@@ -55,6 +58,9 @@ WFSimulator::WFSimulator() : nh_(""), pnh_("~"), is_initialized_(false), is_prev
     pnh_.param("vel_time_constant", vel_time_constant, double(0.1));
     pnh_.param("steer_time_delay", steer_time_delay, double(1.0));
     pnh_.param("steer_time_constant", steer_time_constant, double(0.5));
+    pnh_.param("angvel_time_delay", angvel_time_delay, double(1.0));
+    pnh_.param("angvel_time_constant", angvel_time_constant, double(0.5));
+    const double dt = 1.0 / loop_rate_;
 
     /* set vehicle model type */
     std::string vehicle_model_type_str;
@@ -67,17 +73,17 @@ WFSimulator::WFSimulator() : nh_(""), pnh_("~"), is_initialized_(false), is_prev
     else if (vehicle_model_type_str == "IDEAL_STEER")
     {
         vehicle_model_type_ = VehicleModelType::IDEAL_STEER;
-        /* write me */
+        vehicle_model_ptr_ = std::make_shared<WFSimModelIdealSteer>(wheelbase_);
     }
     else if (vehicle_model_type_str == "DELAY_TWIST")
     {
         vehicle_model_type_ = VehicleModelType::DELAY_TWIST;
-        /* write me */
+        vehicle_model_ptr_ = std::make_shared<WFSimModelTimeDelayTwist>(vel_lim, angvel_lim, dt, vel_time_delay,
+                                                                         vel_time_constant, angvel_time_delay, angvel_time_constant);
     }
     else if (vehicle_model_type_str == "DELAY_STEER")
     {
         vehicle_model_type_ = VehicleModelType::DELAY_STEER;
-        const double dt = 1.0 / loop_rate_;
         vehicle_model_ptr_ = std::make_shared<WFSimModelTimeDelaySteer>(vel_lim, steer_lim, wheelbase_, dt, vel_time_delay,
                                                                         vel_time_constant, steer_time_delay, steer_time_constant);
     }
@@ -123,6 +129,33 @@ WFSimulator::WFSimulator() : nh_(""), pnh_("~"), is_initialized_(false), is_prev
     current_pose_.orientation.w = 1.0;
 }
 
+void WFSimulator::callbackWaypoints(const autoware_msgs::LaneConstPtr &msg)
+{
+    current_waypoints_ptr_ = std::make_shared<autoware_msgs::Lane>(*msg);
+}
+
+void WFSimulator::callbackClosestWaypoint(const std_msgs::Int32ConstPtr &msg)
+{
+    current_closest_waypoint_ptr_ = std::make_shared<std_msgs::Int32>(*msg);
+}
+
+void WFSimulator::callbackInitialPoseWithCov(const geometry_msgs::PoseWithCovarianceStampedConstPtr &msg)
+{
+    geometry_msgs::Twist initial_twist; // initialized with zero for all components
+    setInitialStateWithPoseTransform(*msg, initial_twist);
+}
+
+void WFSimulator::callbackInitialPoseStamped(const geometry_msgs::PoseStampedConstPtr &msg)
+{
+    geometry_msgs::Twist initial_twist; // initialized with zero for all components
+    setInitialStateWithPoseTransform(*msg, initial_twist);
+}
+
+void WFSimulator::timerCallbackPublishTF(const ros::TimerEvent &e)
+{
+    publishTF(current_pose_, current_twist_);
+}
+
 void WFSimulator::timerCallbackSimulation(const ros::TimerEvent &e)
 {
     if (!is_initialized_)
@@ -148,67 +181,42 @@ void WFSimulator::timerCallbackSimulation(const ros::TimerEvent &e)
     current_pose_.position.z = 0.0;
     if (current_waypoints_ptr_ && current_closest_waypoint_ptr_)
     {
-        if (-1 < (int)current_closest_waypoint_ptr_->data && current_closest_waypoint_ptr_->data < (int)current_waypoints_ptr_->waypoints.size())
-        {
-            current_pose_.position.z = current_waypoints_ptr_->waypoints.at(current_closest_waypoint_ptr_->data).pose.pose.position.z;
-        }
+        const int idx = current_closest_waypoint_ptr_->data;
+        if (-1 < idx && idx < (int)current_waypoints_ptr_->waypoints.size())
+            current_pose_.position.z = current_waypoints_ptr_->waypoints.at(idx).pose.pose.position.z;
     }
-
     current_twist_.linear.x = vehicle_model_ptr_->getVx();
     current_twist_.angular.z = vehicle_model_ptr_->getWz();
 
-    /* publish vehicle_statue for steering vehicle */
-    if (vehicle_model_type_ == VehicleModelType::IDEAL_STEER ||
-        vehicle_model_type_ == VehicleModelType::DELAY_STEER)
-    {
-        const double steer = vehicle_model_ptr_->getSteer();
-        autoware_msgs::VehicleStatus vs;
-        vs.header.stamp = ros::Time::now();
-        vs.header.frame_id = "base_link";
-        vs.speed = current_twist_.linear.x;
-        vs.angle = steer;
-        pub_vehicle_status_.publish(vs);
-    }
-
+    /* publish pose & twist */
     publishPoseTwist(current_pose_, current_twist_);
+
+    /* publish vehicle_statue for steering vehicle */
+    autoware_msgs::VehicleStatus vs;
+    vs.header.stamp = ros::Time::now();
+    vs.header.frame_id = "base_link";
+    vs.speed = current_twist_.linear.x;
+    vs.angle = vehicle_model_ptr_->getSteer();
+    pub_vehicle_status_.publish(vs);
 }
 
-void WFSimulator::timerCallbackPublishTF(const ros::TimerEvent &e)
-{
-    publishTF(current_pose_, current_twist_);
-}
 
 void WFSimulator::callbackVehicleCmd(const autoware_msgs::VehicleCmdConstPtr &msg)
 {
     current_vehicle_cmd_ptr_ = std::make_shared<autoware_msgs::VehicleCmd>(*msg);
-    if (vehicle_model_type_ == VehicleModelType::IDEAL_TWIST)
+    if (vehicle_model_type_ == VehicleModelType::IDEAL_TWIST ||
+        vehicle_model_type_ == VehicleModelType::DELAY_TWIST ||
+        vehicle_model_type_ == VehicleModelType::CONST_ACCEL_TWIST)
     {
         Eigen::VectorXd input(2);
         input << msg->twist_cmd.twist.linear.x, msg->twist_cmd.twist.angular.z;
         vehicle_model_ptr_->setInput(input);
     }
-    else if (vehicle_model_type_ == VehicleModelType::IDEAL_STEER)
+    else if (vehicle_model_type_ == VehicleModelType::IDEAL_STEER ||
+             vehicle_model_type_ == VehicleModelType::DELAY_STEER)
     {
         Eigen::VectorXd input(2);
         input << msg->ctrl_cmd.linear_velocity, msg->ctrl_cmd.steering_angle;
-        vehicle_model_ptr_->setInput(input);
-    }
-    else if (vehicle_model_type_ == VehicleModelType::DELAY_TWIST)
-    {
-        Eigen::VectorXd input(2);
-        input << msg->twist_cmd.twist.linear.x, msg->twist_cmd.twist.angular.z;
-        vehicle_model_ptr_->setInput(input);
-    }
-    else if (vehicle_model_type_ == VehicleModelType::DELAY_STEER)
-    {
-        Eigen::VectorXd input(2);
-        input << msg->ctrl_cmd.linear_velocity, msg->ctrl_cmd.steering_angle;
-        vehicle_model_ptr_->setInput(input);
-    }
-    else if (vehicle_model_type_ == VehicleModelType::CONST_ACCEL_TWIST)
-    {
-        Eigen::VectorXd input(2);
-        input << msg->twist_cmd.twist.linear.x, msg->twist_cmd.twist.angular.z;
         vehicle_model_ptr_->setInput(input);
     }
     else
@@ -217,29 +225,8 @@ void WFSimulator::callbackVehicleCmd(const autoware_msgs::VehicleCmdConstPtr &ms
     }
 }
 
-void WFSimulator::callbackWaypoints(const autoware_msgs::LaneConstPtr &msg)
-{
-    current_waypoints_ptr_ = std::make_shared<autoware_msgs::Lane>(*msg);
-}
-
-void WFSimulator::callbackClosestWaypoint(const std_msgs::Int32ConstPtr &msg)
-{
-    current_closest_waypoint_ptr_ = std::make_shared<std_msgs::Int32>(*msg);
-}
-
-void WFSimulator::callbackInitialPoseWithCov(const geometry_msgs::PoseWithCovarianceStampedConstPtr &msg)
-{
-    geometry_msgs::Twist initial_twist; // initialized with zero for all components
-    setInitialStateWithPoseTransform(*msg, initial_twist);
-}
-
-void WFSimulator::callbackInitialPoseStamped(const geometry_msgs::PoseStampedConstPtr &msg)
-{
-    geometry_msgs::Twist initial_twist; // initialized with zero for all components
-    setInitialStateWithPoseTransform(*msg, initial_twist);
-}
-
-void WFSimulator::setInitialStateWithPoseTransform(const geometry_msgs::PoseStamped &pose_stamped, const geometry_msgs::Twist &twist)
+void WFSimulator::setInitialStateWithPoseTransform(const geometry_msgs::PoseStamped &pose_stamped,
+                                                   const geometry_msgs::Twist &twist)
 {
     tf::StampedTransform transform;
     getTransformFromTF(map_frame_id_, pose_stamped.header.frame_id, transform);
@@ -251,7 +238,8 @@ void WFSimulator::setInitialStateWithPoseTransform(const geometry_msgs::PoseStam
     setInitialState(pose, twist);
 }
 
-void WFSimulator::setInitialStateWithPoseTransform(const geometry_msgs::PoseWithCovarianceStamped &pose, const geometry_msgs::Twist &twist)
+void WFSimulator::setInitialStateWithPoseTransform(const geometry_msgs::PoseWithCovarianceStamped &pose,
+                                                   const geometry_msgs::Twist &twist)
 {
     geometry_msgs::PoseStamped ps;
     ps.header = pose.header;
@@ -297,7 +285,8 @@ void WFSimulator::setInitialState(const geometry_msgs::Pose &pose, const geometr
     is_initialized_ = true;
 }
 
-void WFSimulator::getTransformFromTF(const std::string parent_frame, const std::string child_frame, tf::StampedTransform &transform)
+void WFSimulator::getTransformFromTF(const std::string parent_frame,
+                                     const std::string child_frame, tf::StampedTransform &transform)
 {
     while (1)
     {

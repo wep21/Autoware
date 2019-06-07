@@ -89,9 +89,9 @@ add_executable(wf_simulator
         nodes/wf_simulator/wf_simulator_node.cpp
         nodes/wf_simulator/wf_simulator_core.cpp
         nodes/wf_simulator/vehicle_model/wfsim_model_interface.cpp
-        nodes/wf_simulator/vehicle_model/wfsim_model_ideal_twist.cpp
-        nodes/wf_simulator/vehicle_model/wfsim_model_constant_acceleration_twist.cpp
-        nodes/wf_simulator/vehicle_model/wfsim_model_time_delay_steer.cpp)
+        nodes/wf_simulator/vehicle_model/wfsim_model_ideal.cpp
+        nodes/wf_simulator/vehicle_model/wfsim_model_constant_acceleration.cpp
+        nodes/wf_simulator/vehicle_model/wfsim_model_time_delay.cpp)
 target_link_libraries(wf_simulator libwaypoint_follower ${catkin_LIBRARIES})
 
 add_executable(twist_filter nodes/twist_filter/twist_filter.cpp)
