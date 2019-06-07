@@ -43,5 +43,5 @@ public:
   virtual double getVx() = 0;
   virtual double getWz() = 0;
   virtual double getSteer() = 0;
-  virtual Eigen::VectorXd calcModel(const Eigen::VectorXd &state, Eigen::VectorXd &input) = 0;
+  virtual Eigen::VectorXd calcModel(const Eigen::VectorXd &state, const Eigen::VectorXd &input) = 0;
 };

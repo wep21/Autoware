@@ -45,17 +45,15 @@ private:
         WZ_DES,
     };
 
-    double dt_;
-
-    double vx_lim_;
-    double wz_lim_;
+    const double vx_lim_;
+    const double wz_lim_;
 
     std::deque<double> vx_input_queue_;
     std::deque<double> wz_input_queue_;
-    double vx_delay_;
-    double vx_time_constant_;
-    double wz_delay_;
-    double wz_time_constant_;
+    const double vx_delay_;
+    const double vx_time_constant_;
+    const double wz_delay_;
+    const double wz_time_constant_;
 
     void initializeInputQueue(const double &dt);
 
@@ -65,7 +63,7 @@ private:
     double getVx() override;
     double getWz() override;
     double getSteer() override;
-    Eigen::VectorXd calcModel(const Eigen::VectorXd &state, Eigen::VectorXd &input) override;
+    Eigen::VectorXd calcModel(const Eigen::VectorXd &state, const Eigen::VectorXd &input) override;
 };
 
 
@@ -91,18 +89,16 @@ private:
         STEER_DES,
     };
 
-    double dt_;
-
-    double vel_lim_;
-    double steer_lim_;
-    double wheelbase_;
+    const double vel_lim_;
+    const double steer_lim_;
+    const double wheelbase_;
 
     std::deque<double> vel_input_queue_;
     std::deque<double> steer_input_queue_;
-    double vel_delay_;
-    double vel_time_constant_;
-    double steer_delay_;
-    double steer_time_constant_;
+    const double vel_delay_;
+    const double vel_time_constant_;
+    const double steer_delay_;
+    const double steer_time_constant_;
 
     void initializeInputQueue(const double &dt);
 
@@ -112,5 +108,5 @@ private:
     double getVx() override;
     double getWz() override;
     double getSteer() override;
-    Eigen::VectorXd calcModel(const Eigen::VectorXd &state, Eigen::VectorXd &input) override;
+    Eigen::VectorXd calcModel(const Eigen::VectorXd &state, const Eigen::VectorXd &input) override;
 };

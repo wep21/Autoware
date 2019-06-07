@@ -91,7 +91,10 @@ add_executable(wf_simulator
         nodes/wf_simulator/vehicle_model/wfsim_model_interface.cpp
         nodes/wf_simulator/vehicle_model/wfsim_model_ideal.cpp
         nodes/wf_simulator/vehicle_model/wfsim_model_constant_acceleration.cpp
-        nodes/wf_simulator/vehicle_model/wfsim_model_time_delay.cpp)
+        nodes/wf_simulator/vehicle_model/wfsim_model_time_delay.cpp
+        nodes/wf_simulator/vehicle_model/wfsim_model_forklift_rls.cpp
+)
+
 target_link_libraries(wf_simulator libwaypoint_follower ${catkin_LIBRARIES})
 
 add_executable(twist_filter nodes/twist_filter/twist_filter.cpp)

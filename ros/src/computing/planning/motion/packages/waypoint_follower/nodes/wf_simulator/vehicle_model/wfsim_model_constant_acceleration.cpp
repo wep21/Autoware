@@ -26,7 +26,7 @@ double WFSimModelConstantAccelTwist::getYaw() { return state_(IDX::YAW); };
 double WFSimModelConstantAccelTwist::getVx() { return state_(IDX::VX); };
 double WFSimModelConstantAccelTwist::getWz() { return state_(IDX::WZ); };
 double WFSimModelConstantAccelTwist::getSteer() { return 0.0; };
-Eigen::VectorXd WFSimModelConstantAccelTwist::calcModel(const Eigen::VectorXd &state, Eigen::VectorXd &input)
+Eigen::VectorXd WFSimModelConstantAccelTwist::calcModel(const Eigen::VectorXd &state, const Eigen::VectorXd &input)
 {
     const double vel = state(IDX::VX);
     const double angvel = state(IDX::WZ);

@@ -37,6 +37,7 @@
 #include "wf_simulator/wfsim_model_ideal.hpp"
 #include "wf_simulator/wfsim_model_time_delay.hpp"
 #include "wf_simulator/wfsim_model_constant_acceleration.hpp"
+#include "wf_simulator/wfsim_model_forklift_rls.hpp"
 
 class WFSimulator
 {
@@ -84,6 +85,8 @@ private:
         DELAY_TWIST,
         DELAY_STEER,
         CONST_ACCEL_TWIST,
+        IDEAL_FORKLIFT_RLS,
+        DELAY_FORKLIFT_RLS,
 
     } vehicle_model_type_;
 

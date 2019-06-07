@@ -46,8 +46,9 @@ WFSimulator::WFSimulator() : nh_(""), pnh_("~"), is_initialized_(false), is_prev
     timer_tf_ = nh_.createTimer(ros::Duration(0.1), &WFSimulator::timerCallbackPublishTF, this);
 
     /* set vehicle model parameters */
-    double angvel_lim, vel_lim, steer_lim, accel_rate, angvel_rate, steer_vel, vel_time_delay,
+    double tread_length, angvel_lim, vel_lim, steer_lim, accel_rate, angvel_rate, steer_vel, vel_time_delay,
         vel_time_constant, steer_time_delay, steer_time_constant, angvel_time_delay, angvel_time_constant;
+    pnh_.param("tread_length", tread_length, double(1.0));
     pnh_.param("angvel_lim", angvel_lim, double(3.0));
     pnh_.param("vel_lim", vel_lim, double(10.0));
     pnh_.param("steer_lim", steer_lim, double(3.14 / 3.0));
@@ -79,7 +80,7 @@ WFSimulator::WFSimulator() : nh_(""), pnh_("~"), is_initialized_(false), is_prev
     {
         vehicle_model_type_ = VehicleModelType::DELAY_TWIST;
         vehicle_model_ptr_ = std::make_shared<WFSimModelTimeDelayTwist>(vel_lim, angvel_lim, dt, vel_time_delay,
-                                                                         vel_time_constant, angvel_time_delay, angvel_time_constant);
+                                                                        vel_time_constant, angvel_time_delay, angvel_time_constant);
     }
     else if (vehicle_model_type_str == "DELAY_STEER")
     {
@@ -91,6 +92,17 @@ WFSimulator::WFSimulator() : nh_(""), pnh_("~"), is_initialized_(false), is_prev
     {
         vehicle_model_type_ = VehicleModelType::CONST_ACCEL_TWIST;
         vehicle_model_ptr_ = std::make_shared<WFSimModelConstantAccelTwist>(vel_lim, angvel_lim, accel_rate, angvel_rate);
+    }
+    else if (vehicle_model_type_str == "IDEAL_FORKLIFT_RLS")
+    {
+        vehicle_model_type_ = VehicleModelType::IDEAL_FORKLIFT_RLS;
+        vehicle_model_ptr_ = std::make_shared<WFSimModelIdealForkliftRLS>(vel_lim, angvel_lim, wheelbase_, tread_length);
+    }
+    else if (vehicle_model_type_str == "DELAY_FORKLIFT_RLS")
+    {
+        vehicle_model_type_ = VehicleModelType::DELAY_FORKLIFT_RLS;
+        vehicle_model_ptr_ = std::make_shared<WFSimModelTimeDelayForkliftRLS>(vel_lim, steer_lim, wheelbase_, tread_length, dt, vel_time_delay,
+                                                                              vel_time_constant, steer_time_delay, steer_time_constant);
     }
     else
     {
@@ -200,7 +212,6 @@ void WFSimulator::timerCallbackSimulation(const ros::TimerEvent &e)
     pub_vehicle_status_.publish(vs);
 }
 
-
 void WFSimulator::callbackVehicleCmd(const autoware_msgs::VehicleCmdConstPtr &msg)
 {
     current_vehicle_cmd_ptr_ = std::make_shared<autoware_msgs::VehicleCmd>(*msg);
@@ -213,7 +224,9 @@ void WFSimulator::callbackVehicleCmd(const autoware_msgs::VehicleCmdConstPtr &ms
         vehicle_model_ptr_->setInput(input);
     }
     else if (vehicle_model_type_ == VehicleModelType::IDEAL_STEER ||
-             vehicle_model_type_ == VehicleModelType::DELAY_STEER)
+             vehicle_model_type_ == VehicleModelType::DELAY_STEER ||
+             vehicle_model_type_ == VehicleModelType::IDEAL_FORKLIFT_RLS ||
+             vehicle_model_type_ == VehicleModelType::DELAY_FORKLIFT_RLS)
     {
         Eigen::VectorXd input(2);
         input << msg->ctrl_cmd.linear_velocity, msg->ctrl_cmd.steering_angle;
@@ -257,7 +270,8 @@ void WFSimulator::setInitialState(const geometry_msgs::Pose &pose, const geometr
     const double steer = 0.0;
 
     if (vehicle_model_type_ == VehicleModelType::IDEAL_TWIST ||
-        vehicle_model_type_ == VehicleModelType::IDEAL_STEER)
+        vehicle_model_type_ == VehicleModelType::IDEAL_STEER ||
+        vehicle_model_type_ == VehicleModelType::IDEAL_FORKLIFT_RLS)
     {
         Eigen::VectorXd state(3);
         state << x, y, yaw;
@@ -270,7 +284,8 @@ void WFSimulator::setInitialState(const geometry_msgs::Pose &pose, const geometr
         state << x, y, yaw, vx, wz;
         vehicle_model_ptr_->setState(state);
     }
-    else if (vehicle_model_type_ == VehicleModelType::DELAY_STEER)
+    else if (vehicle_model_type_ == VehicleModelType::DELAY_STEER ||
+             vehicle_model_type_ == VehicleModelType::DELAY_FORKLIFT_RLS)
     {
         Eigen::VectorXd state(5);
         state << x, y, yaw, vx, steer;

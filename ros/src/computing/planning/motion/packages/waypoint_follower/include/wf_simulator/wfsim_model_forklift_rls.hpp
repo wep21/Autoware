@@ -18,42 +18,22 @@
 #include "wf_simulator/wfsim_model_interface.hpp"
 
 #include <iostream>
+#include <queue>
+#include <deque>
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/LU>
 
-class WFSimModelIdealTwist : public WFSimModelInterface
+/*
+ * Fork Lift model with steering on rear-left wheel. (RLS : rear-left steering)
+ * This models dynamics at the center of the front wheels.
+ * 
+ */
+
+class WFSimModelIdealForkliftRLS : public WFSimModelInterface
 {
 public:
-    WFSimModelIdealTwist();
-    ~WFSimModelIdealTwist() = default;
-
-private:
-    enum IDX
-    {
-        X = 0,
-        Y,
-        YAW,
-    };
-    enum IDX_U
-    {
-        VX_DES = 0,
-        WZ_DES,
-    };
-
-    double getX() override;
-    double getY() override;
-    double getYaw() override;
-    double getVx() override;
-    double getWz() override;
-    double getSteer() override;
-    Eigen::VectorXd calcModel(const Eigen::VectorXd &state, const Eigen::VectorXd &input) override;
-};
-
-class WFSimModelIdealSteer : public WFSimModelInterface
-{
-public:
-    WFSimModelIdealSteer(double wheelbase);
-    ~WFSimModelIdealSteer() = default;
+    WFSimModelIdealForkliftRLS(double vx_lim, double steer_lim, double wheelbase, double tread);
+    ~WFSimModelIdealForkliftRLS() = default;
 
 private:
     enum IDX
@@ -68,7 +48,58 @@ private:
         STEER_DES,
     };
 
+    const double vx_lim_;
+    const double steer_lim_;
     const double wheelbase_;
+    const double tread_;
+
+    double convertSteerToCurvature(const double &steer);
+
+    double getX() override;
+    double getY() override;
+    double getYaw() override;
+    double getVx() override;
+    double getWz() override;
+    double getSteer() override;
+    Eigen::VectorXd calcModel(const Eigen::VectorXd &state, const Eigen::VectorXd &input) override;
+};
+
+class WFSimModelTimeDelayForkliftRLS : public WFSimModelInterface
+{
+public:
+    WFSimModelTimeDelayForkliftRLS(double vx_lim, double steer_lim, double wheelbase, double tread, double dt,
+                                   double vx_delay, double vx_time_constant, double steer_delay, double steer_time_constant);
+    ~WFSimModelTimeDelayForkliftRLS() = default;
+
+private:
+    enum IDX
+    {
+        X = 0,
+        Y,
+        YAW,
+        VX,
+        STEER,
+    };
+    enum IDX_U
+    {
+        VX_DES = 0,
+        STEER_DES,
+    };
+
+    const double vx_lim_;
+    const double steer_lim_;
+    const double wheelbase_;
+    const double tread_;
+
+    std::deque<double> vx_input_queue_;
+    std::deque<double> steer_input_queue_;
+    const double vx_delay_;
+    const double vx_time_constant_;
+    const double steer_delay_;
+    const double steer_time_constant_;
+
+    void initializeInputQueue(const double &dt);
+    double convertSteerToCurvature(const double &steer);
 
     double getX() override;
     double getY() override;

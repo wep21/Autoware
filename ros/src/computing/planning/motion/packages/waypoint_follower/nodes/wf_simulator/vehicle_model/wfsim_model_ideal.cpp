@@ -26,7 +26,7 @@ double WFSimModelIdealTwist::getVx() { return input_(IDX_U::VX_DES); };
 double WFSimModelIdealTwist::getWz() { return input_(IDX_U::WZ_DES); };
 double WFSimModelIdealTwist::getSteer() { return 0.0; };
 
-Eigen::VectorXd WFSimModelIdealTwist::calcModel(const Eigen::VectorXd &state, Eigen::VectorXd &input)
+Eigen::VectorXd WFSimModelIdealTwist::calcModel(const Eigen::VectorXd &state, const Eigen::VectorXd &input)
 {
     const double yaw = state(IDX::YAW);
     const double vx = input(IDX_U::VX_DES);
@@ -50,7 +50,7 @@ double WFSimModelIdealSteer::getVx() { return input_(IDX_U::VX_DES); };
 double WFSimModelIdealSteer::getWz() { return input_(IDX_U::VX_DES) * std::tan(input_(IDX_U::STEER_DES)) / wheelbase_; };
 double WFSimModelIdealSteer::getSteer() { return input_(IDX_U::STEER_DES); };
 
-Eigen::VectorXd WFSimModelIdealSteer::calcModel(const Eigen::VectorXd &state, Eigen::VectorXd &input)
+Eigen::VectorXd WFSimModelIdealSteer::calcModel(const Eigen::VectorXd &state, const Eigen::VectorXd &input)
 {
     const double yaw = state(IDX::YAW);
     const double vx = input(IDX_U::VX_DES);

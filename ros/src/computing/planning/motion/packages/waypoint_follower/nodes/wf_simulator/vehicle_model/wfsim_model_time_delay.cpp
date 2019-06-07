@@ -46,7 +46,7 @@ void WFSimModelTimeDelayTwist::initializeInputQueue(const double &dt)
     }
 }
 
-Eigen::VectorXd WFSimModelTimeDelayTwist::calcModel(const Eigen::VectorXd &state, Eigen::VectorXd &input)
+Eigen::VectorXd WFSimModelTimeDelayTwist::calcModel(const Eigen::VectorXd &state, const Eigen::VectorXd &input)
 {
     const double delay_input_vx = vx_input_queue_.front();
     vx_input_queue_.pop_front();
@@ -101,7 +101,7 @@ void WFSimModelTimeDelaySteer::initializeInputQueue(const double &dt)
     }
 }
 
-Eigen::VectorXd WFSimModelTimeDelaySteer::calcModel(const Eigen::VectorXd &state, Eigen::VectorXd &input)
+Eigen::VectorXd WFSimModelTimeDelaySteer::calcModel(const Eigen::VectorXd &state, const Eigen::VectorXd &input)
 {
     const double delay_input_vel = vel_input_queue_.front();
     vel_input_queue_.pop_front();

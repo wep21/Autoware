@@ -42,10 +42,10 @@ private:
         WZ_DES,
     };
 
-    double vel_lim_;
-    double angvel_lim_;
-    double vel_rate_;
-    double angvel_rate_;
+    const double vel_lim_;
+    const double angvel_lim_;
+    const double vel_rate_;
+    const double angvel_rate_;
 
     double getX() override;
     double getY() override;
@@ -53,5 +53,5 @@ private:
     double getVx() override;
     double getWz() override;
     double getSteer() override;
-    Eigen::VectorXd calcModel(const Eigen::VectorXd &state, Eigen::VectorXd &input) override;
+    Eigen::VectorXd calcModel(const Eigen::VectorXd &state, const Eigen::VectorXd &input) override;
 };
