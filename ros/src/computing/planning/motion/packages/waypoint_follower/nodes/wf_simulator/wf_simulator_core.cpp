@@ -59,7 +59,7 @@ WFSimulator::WFSimulator() : nh_(""), pnh_("~"), is_initialized_(false), is_prev
     pnh_.param("vel_time_constant", vel_time_constant, double(0.1));
     pnh_.param("steer_time_delay", steer_time_delay, double(1.0));
     pnh_.param("steer_time_constant", steer_time_constant, double(0.5));
-    pnh_.param("angvel_time_delay", angvel_time_delay, double(1.0));
+    pnh_.param("angvel_time_delay", angvel_time_delay, double(0.2));
     pnh_.param("angvel_time_constant", angvel_time_constant, double(0.5));
     const double dt = 1.0 / loop_rate_;
 

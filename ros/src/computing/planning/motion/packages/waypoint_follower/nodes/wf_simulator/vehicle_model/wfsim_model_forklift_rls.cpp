@@ -19,7 +19,15 @@
 
 WFSimModelIdealForkliftRLS::WFSimModelIdealForkliftRLS(double vx_lim, double steer_lim, double wheelbase, double tread)
     : WFSimModelInterface(3 /* dim x */, 2 /* dim u */), vx_lim_(vx_lim), steer_lim_(steer_lim),
-      wheelbase_(wheelbase), tread_(tread){};
+      wheelbase_(wheelbase), tread_(tread)
+{
+
+    ROS_INFO("running IDEAL_FORKLIFT_RLS model. \n parameters :");
+    ROS_INFO("vx_lim : %f [m/s]", vx_lim_);
+    ROS_INFO("steer_lim : %f [rad]", steer_lim_);
+    ROS_INFO("wheelbase : %f [m]", wheelbase_);
+    ROS_INFO("tread[ : %f [m]", tread_);
+};
 
 double WFSimModelIdealForkliftRLS::getX() { return state_(IDX::X); };
 double WFSimModelIdealForkliftRLS::getY() { return state_(IDX::Y); };
@@ -45,8 +53,6 @@ Eigen::VectorXd WFSimModelIdealForkliftRLS::calcModel(const Eigen::VectorXd &sta
     d_state(IDX::Y) = vx * sin(yaw);
     d_state(IDX::YAW) = wz;
 
-    std::cout << "running ideal forklift!!" << std::endl;
-
     return d_state;
 };
 
@@ -64,6 +70,17 @@ WFSimModelTimeDelayForkliftRLS::WFSimModelTimeDelayForkliftRLS(double vx_lim, do
       vx_time_constant_(vx_time_constant), steer_delay_(steer_delay), steer_time_constant_(steer_time_constant)
 {
     initializeInputQueue(dt);
+
+    ROS_INFO("running DELAY_FORKLIFT_RLS model. \n parameters :");
+    ROS_INFO("vx_lim : %f [m/s]", vx_lim_);
+    ROS_INFO("steer_lim : %f [rad]", steer_lim_);
+    ROS_INFO("wheelbase : %f [m]", wheelbase_);
+    ROS_INFO("tread : %f [m]", tread_);
+    ROS_INFO("dt : %f [s]", dt);
+    ROS_INFO("vx_delay : %f [s]", vx_delay_);
+    ROS_INFO("vx_time_constant : %f [s]", vx_time_constant_);
+    ROS_INFO("steer_delay : %f [s]", steer_delay_);
+    ROS_INFO("steer_time_constant : %f [s]", steer_time_constant_);
 };
 
 double WFSimModelTimeDelayForkliftRLS::getX() { return state_(IDX::X); };
@@ -115,8 +132,6 @@ Eigen::VectorXd WFSimModelTimeDelayForkliftRLS::calcModel(const Eigen::VectorXd 
     d_state(IDX::YAW) = vx * convertSteerToCurvature(steer);
     d_state(IDX::VX) = -(vx - delay_vx_des) / vx_time_constant_;
     d_state(IDX::STEER) = -(steer - delay_steer_des) / steer_time_constant_;
-
-    std::cout << "running delay forklift!!" << std::endl;
 
     return d_state;
 };

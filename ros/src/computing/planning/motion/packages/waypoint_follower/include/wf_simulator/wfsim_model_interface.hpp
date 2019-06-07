@@ -15,6 +15,7 @@
  */
 
 #pragma once
+#include <ros/ros.h>
 #include <eigen3/Eigen/Core>
 
 class WFSimModelInterface
