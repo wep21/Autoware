@@ -38,7 +38,7 @@ double WFSimModelIdealForkliftRLS::getSteer()
 {
     const double den = -2 * input_(IDX_U::VX_DES) + input_(IDX_U::WZ_DES) * tread_;
     const double steer = (input_(IDX_U::VX_DES) ==0 && input_(IDX_U::WZ_DES) == 0) ? 0 : std::atan(2 * input_(IDX_U::WZ_DES) * wheelbase_ / den);
-    return (steer > 2 * wheelbase_ /tread_) ? steer - std::asin(1) * 2 : steer;
+    return (steer > std::atan(2 * wheelbase_ /tread_)) ? steer - std::asin(1) * 2 : steer;
 };
 
 Eigen::VectorXd WFSimModelIdealForkliftRLS::calcModel(const Eigen::VectorXd &state, const Eigen::VectorXd &input)
